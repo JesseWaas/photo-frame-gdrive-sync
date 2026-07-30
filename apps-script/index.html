@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      :root {
+        --bg: #f4f1ea;
+        --ink: #1c1917;
+        --muted: #57534e;
+        --line: #d6d3d1;
+        --accent: #0f766e;
+        --card: #fffdf8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 15px/1.45 "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, #efe6d5, transparent 40%),
+          var(--bg);
+        padding: 24px;
+      }
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 20px 22px 28px;
+        box-shadow: 0 10px 30px rgba(28, 25, 23, 0.06);
+      }
+      h1 { margin: 0 0 6px; font-size: 1.45rem; }
+      p.lead { margin: 0 0 18px; color: var(--muted); }
+      label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+      select, input, button {
+        font: inherit;
+      }
+      select, input[type="text"] {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr auto;
+        gap: 10px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+      .settings {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 12px;
+      }
+      th, td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px 6px;
+        vertical-align: top;
+        text-align: left;
+      }
+      th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+      td input, td select { width: 100%; }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 9px 14px;
+        cursor: pointer;
+        background: #e7e5e4;
+        color: var(--ink);
+      }
+      button.primary {
+        background: var(--accent);
+        color: white;
+      }
+      button.danger { background: #fecaca; }
+      .rule-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        justify-content: flex-end;
+      }
+      .rule-actions button {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+      }
+      #status {
+        min-height: 1.3em;
+        margin-top: 12px;
+        color: var(--muted);
+        white-space: pre-wrap;
+      }
+      #status.error { color: #b91c1c; }
+      #status.ok { color: #065f46; }
+      .hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 10px; }
+      .picker {
+        margin: 12px 0 20px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        overflow: hidden;
+      }
+      .picker-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        background: #fafaf9;
+      }
+      .crumbs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        min-width: 0;
+        flex: 1 1 auto;
+        font-size: 0.9rem;
+      }
+      .crumbs button {
+        background: transparent;
+        padding: 4px 8px;
+        border-radius: 6px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .crumbs button:hover { background: #ccfbf1; }
+      .crumbs button.current {
+        color: var(--ink);
+        cursor: default;
+      }
+      .crumbs .sep { color: var(--muted); }
+      .picker-results {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 280px;
+        overflow: auto;
+      }
+      .picker-results li {
+        display: grid;
+        grid-template-columns: 64px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 14px;
+        border-bottom: 1px solid #f5f5f4;
+        cursor: pointer;
+      }
+      .picker-results li:hover { background: #f5f5f4; }
+      .picker-results li.selected {
+        background: #ccfbf1;
+        outline: 1px solid #99f6e4;
+        outline-offset: -1px;
+      }
+      .picker-results .badge {
+        display: inline-block;
+        width: 64px;
+        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: #f5f5f4;
+        border-radius: 999px;
+        padding: 4px 0;
+      }
+      .picker-results li[data-type="folder"] .badge {
+        color: #0f766e;
+        background: #ccfbf1;
+      }
+      .picker-results .name {
+        font-size: 0.92rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .picker-results .open-folder {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+        border-radius: 8px;
+      }
+      .picker-empty {
+        padding: 28px 16px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .picker-footer {
+        padding: 10px 12px;
+        border-top: 1px solid var(--line);
+        background: #fafaf9;
+      }
+      .picker-footer .selected-label {
+        color: var(--muted);
+        font-size: 0.85rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .picker-footer .selected-label strong { color: var(--ink); font-weight: 600; }
+      @media (max-width: 720px) {
+        .row, .settings { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Photo Frame Config</h1>
+      <p class="lead">Edit host-specific visibility and crop rules in Drive <code>config/&lt;hostname&gt;.json</code>.</p>
+
+      <div class="row">
+        <div>
+          <label for="host">Host</label>
+          <select id="host"></select>
+        </div>
+        <div>
+          <label for="newHost">New hostname (create only)</label>
+          <input id="newHost" type="text" placeholder="leave blank to use dropdown" />
+        </div>
+        <div class="actions">
+          <button type="button" id="reloadBtn" title="Reload the selected host from Drive">Reload</button>
+          <button type="button" class="primary" id="saveBtn">Save</button>
+        </div>
+      </div>
+
+      <p class="hint" id="defaultsHint"></p>
+
+      <details>
+        <summary>Host overrides (optional)</summary>
+        <div class="settings" style="margin-top: 12px;">
+          <div>
+            <label for="aspect" title="Frame aspect ratio as width:height. Examples: 3:4, 9:16, 2:3">aspect_ratio</label>
+            <input
+              id="aspect"
+              type="text"
+              placeholder="e.g. 3:4"
+              title="Use W:H (width:height). Examples: 3:4 (portrait frame), 9:16, 2:3. Leave blank to keep defaults.json."
+            />
+          </div>
+          <div>
+            <label for="date">date</label>
+            <select id="date">
+              <option value="">(default)</option>
+              <option value="upload">upload</option>
+              <option value="capture">capture</option>
+            </select>
+          </div>
+          <div>
+            <label for="rotation">rotation</label>
+            <select id="rotation">
+              <option value="">(default)</option>
+              <option value="hourly">hourly</option>
+              <option value="daily">daily</option>
+              <option value="every-run">every-run</option>
+              <option value="off">off</option>
+            </select>
+          </div>
+          <div>
+            <label for="maxBytes" title="Optional frame capacity limit. Examples: 20GB, 512MB, or a raw byte count like 1073741824">max_bytes</label>
+            <input
+              id="maxBytes"
+              type="text"
+              placeholder="e.g. 20GB"
+              title="Optional size budget for photos on the frame. Units: B, KB, MB, GB, TB (binary, 1024-based). Examples: 20GB, 512MB, 1000000. Leave blank to keep defaults.json."
+            />
+          </div>
+          <div>
+            <label for="maxFiles">max_files</label>
+            <input id="maxFiles" type="text" placeholder="from defaults" />
+          </div>
+          <div>
+            <label for="preserve">preserve_unmanaged</label>
+            <select id="preserve">
+              <option value="">(default)</option>
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <h2 style="font-size: 1.05rem; margin: 18px 0 4px;">Album browser</h2>
+      <p class="hint">Browse folders to pick a path, then add it under Visibility or Crop rules below.</p>
+
+      <div class="picker" id="pathPicker">
+        <div class="picker-toolbar">
+          <nav class="crumbs" id="pathCrumbs" aria-label="Folder path"></nav>
+          <button type="button" id="pathUpBtn" title="Go up one folder">Up</button>
+        </div>
+        <ul class="picker-results" id="pathResults" tabindex="0"></ul>
+        <div class="picker-footer">
+          <div class="selected-label" id="pathSelectedLabel">No selection</div>
+        </div>
+      </div>
+      <p class="hint" id="pathHint">Set ALBUMS_FOLDER_ID to browse albums. Double-click a folder to open it.</p>
+
+      <h2 style="font-size: 1.05rem; margin: 22px 0 4px;">Visibility rules</h2>
+      <p class="hint">Controls which paths appear on the frame, and when. Active schedules OR-match; use ↑ ↓ to reorder.</p>
+      <div class="actions" style="justify-content: flex-start; margin: 8px 0 10px;">
+        <button type="button" id="addCurrentFolderBtn">Add this folder</button>
+        <button type="button" class="primary" id="addPathBtn">Add selection</button>
+        <button type="button" id="addRuleBtn">Blank rule</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 52%;">filter</th>
+            <th style="width: 28%;">schedule</th>
+            <th style="width: 20%;"></th>
+          </tr>
+        </thead>
+        <tbody id="rulesBody"></tbody>
+      </table>
+
+      <h2 style="font-size: 1.05rem; margin: 22px 0 4px;">Crop rules</h2>
+      <p class="hint">Independent of schedule. First matching filter wins; unmatched selected files use <code>none</code>.</p>
+      <div class="actions" style="justify-content: flex-start; margin: 8px 0 10px;">
+        <button type="button" id="addCropCurrentFolderBtn">Add this folder</button>
+        <button type="button" class="primary" id="addCropPathBtn">Add selection</button>
+        <button type="button" id="addCropRuleBtn">Blank rule</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 58%;">filter</th>
+            <th style="width: 18%;">crop</th>
+            <th style="width: 24%;"></th>
+          </tr>
+        </thead>
+        <tbody id="cropRulesBody"></tbody>
+      </table>
+
+      <div id="status"></div>
+    </main>
+
+    <script>
+      let browseState = {
+        relativePath: '',
+        currentPath: 'albums',
+        currentFilter: '^albums/.*',
+        breadcrumbs: [{ name: 'albums', path: '' }],
+        items: [],
+        albumsConfigured: false,
+      };
+      let selectedItemIndex = null;
+
+      function $(id) { return document.getElementById(id); }
+
+      function setStatus(message, kind) {
+        const el = $('status');
+        el.textContent = message || '';
+        el.className = kind || '';
+      }
+
+      function selectedBrowseItem() {
+        if (selectedItemIndex == null) return null;
+        return browseState.items[selectedItemIndex] || null;
+      }
+
+      function updateSelectedLabel() {
+        const item = selectedBrowseItem();
+        const label = $('pathSelectedLabel');
+        if (!item) {
+          label.innerHTML = 'Current folder: <strong>' + browseState.currentPath + '</strong>';
+          return;
+        }
+        label.innerHTML = 'Selected: <strong>' + item.path + '</strong>';
+      }
+
+      function selectItemIndex(index) {
+        selectedItemIndex = index;
+        Array.from($('pathResults').querySelectorAll('li')).forEach((li) => {
+          li.classList.toggle('selected', Number(li.dataset.index) === index);
+        });
+        updateSelectedLabel();
+      }
+
+      function addRuleForItem(item) {
+        if (!item) return setStatus('Select a folder or file first.', 'error');
+        $('rulesBody').appendChild(ruleRow({
+          filter: item.filter,
+          schedule: '* * * * *',
+        }));
+        markDirty();
+        setStatus('Added visibility rule for ' + item.path, 'ok');
+      }
+
+      function addCropRuleForItem(item) {
+        if (!item) return setStatus('Select a folder or file first.', 'error');
+        $('cropRulesBody').appendChild(cropRuleRow({
+          filter: item.filter,
+          crop: item.type === 'file' ? 'none' : 'faces',
+        }));
+        markDirty();
+        setStatus('Added crop rule for ' + item.path, 'ok');
+      }
+
+      function renderBreadcrumbs() {
+        const nav = $('pathCrumbs');
+        nav.innerHTML = '';
+        browseState.breadcrumbs.forEach((crumb, index) => {
+          if (index > 0) {
+            const sep = document.createElement('span');
+            sep.className = 'sep';
+            sep.textContent = '/';
+            nav.appendChild(sep);
+          }
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = crumb.name;
+          const isCurrent = index === browseState.breadcrumbs.length - 1;
+          if (isCurrent) {
+            btn.className = 'current';
+          } else {
+            btn.onclick = () => loadFolder(crumb.path);
+          }
+          nav.appendChild(btn);
+        });
+        $('pathUpBtn').disabled = browseState.relativePath === '';
+      }
+
+      function renderFolderListing() {
+        const list = $('pathResults');
+        list.innerHTML = '';
+        selectedItemIndex = null;
+
+        if (!browseState.albumsConfigured) {
+          list.innerHTML = '<div class="picker-empty">Configure ALBUMS_FOLDER_ID to browse albums.</div>';
+          updateSelectedLabel();
+          return;
+        }
+
+        if (!browseState.items.length) {
+          list.innerHTML = '<div class="picker-empty">This folder is empty.</div>';
+          updateSelectedLabel();
+          $('pathHint').textContent = 'Browsing ' + browseState.currentPath;
+          return;
+        }
+
+        browseState.items.forEach((item, index) => {
+          const li = document.createElement('li');
+          li.dataset.index = String(index);
+          li.dataset.type = item.type;
+          li.innerHTML =
+            '<span class="badge">' + (item.type === 'folder' ? 'Folder' : 'File') + '</span>' +
+            '<span class="name"></span>' +
+            (item.type === 'folder'
+              ? '<button type="button" class="open-folder">Open</button>'
+              : '<span></span>');
+          li.querySelector('.name').textContent = item.name;
+          li.onclick = (event) => {
+            if (event.target.closest('.open-folder')) return;
+            selectItemIndex(index);
+          };
+          li.ondblclick = () => {
+            if (item.type === 'folder') loadFolder(item.relativePath);
+            else {
+              selectItemIndex(index);
+              addRuleForItem(item);
+            }
+          };
+          const openBtn = li.querySelector('.open-folder');
+          if (openBtn) {
+            openBtn.onclick = (event) => {
+              event.stopPropagation();
+              loadFolder(item.relativePath);
+            };
+          }
+          list.appendChild(li);
+        });
+
+        updateSelectedLabel();
+        $('pathHint').textContent =
+          browseState.items.length + ' items in ' + browseState.currentPath +
+          '. Open folders to navigate; use the Visibility or Crop buttons below to add rules.';
+      }
+
+      function loadFolder(relativePath) {
+        setStatus('Opening folder…');
+        google.script.run
+          .withSuccessHandler((result) => {
+            browseState = Object.assign({
+              relativePath: '',
+              currentPath: 'albums',
+              currentFilter: '^albums/.*',
+              breadcrumbs: [{ name: 'albums', path: '' }],
+              items: [],
+              albumsConfigured: false,
+            }, result || {});
+            renderBreadcrumbs();
+            renderFolderListing();
+            setStatus(browseState.albumsConfigured ? 'Browsing ' + browseState.currentPath : '', 'ok');
+          })
+          .withFailureHandler(withFailure)
+          .listAlbumChildren(relativePath || '');
+      }
+
+      function moveRow(tr, direction) {
+        const body = tr.parentElement;
+        if (!body) return;
+        if (direction < 0 && tr.previousElementSibling) {
+          body.insertBefore(tr, tr.previousElementSibling);
+        } else if (direction > 0 && tr.nextElementSibling) {
+          body.insertBefore(tr.nextElementSibling, tr);
+        }
+      }
+
+      function wireRowActions(tr) {
+        tr.querySelector('.move-up').onclick = () => {
+          moveRow(tr, -1);
+          markDirty();
+        };
+        tr.querySelector('.move-down').onclick = () => {
+          moveRow(tr, 1);
+          markDirty();
+        };
+        tr.querySelector('.remove').onclick = () => {
+          tr.remove();
+          markDirty();
+        };
+      }
+
+      function ruleRow(rule) {
+        rule = rule || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><input class="filter" type="text" /></td>' +
+          '<td><input class="schedule" type="text" /></td>' +
+          '<td><div class="rule-actions">' +
+            '<button type="button" class="move-up" title="Move up">↑</button>' +
+            '<button type="button" class="move-down" title="Move down">↓</button>' +
+            '<button type="button" class="danger remove">Remove</button>' +
+          '</div></td>';
+        tr.querySelector('.filter').value = rule.filter || '';
+        tr.querySelector('.schedule').value = rule.schedule || '* * * * *';
+        wireRowActions(tr);
+        return tr;
+      }
+
+      function cropRuleRow(rule) {
+        rule = rule || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><input class="filter" type="text" /></td>' +
+          '<td><select class="crop">' +
+            '<option value="none">none</option>' +
+            '<option value="center">center</option>' +
+            '<option value="faces">faces</option>' +
+          '</select></td>' +
+          '<td><div class="rule-actions">' +
+            '<button type="button" class="move-up" title="Move up">↑</button>' +
+            '<button type="button" class="move-down" title="Move down">↓</button>' +
+            '<button type="button" class="danger remove">Remove</button>' +
+          '</div></td>';
+        tr.querySelector('.filter').value = rule.filter || '';
+        tr.querySelector('.crop').value = rule.crop || 'none';
+        wireRowActions(tr);
+        return tr;
+      }
+
+      let formDirty = false;
+      let loadedHostname = null;
+      let suppressHostChange = false;
+
+      function markDirty() {
+        formDirty = true;
+      }
+
+      function clearDirty() {
+        formDirty = false;
+      }
+
+      function confirmDiscardIfDirty(nextHostname) {
+        if (!formDirty) return true;
+        const current = loadedHostname || 'the current host';
+        const next = nextHostname || 'another host';
+        return confirm(
+          'You have unsaved changes for "' + current + '".\n\n' +
+          'Load "' + next + '" and discard those changes?'
+        );
+      }
+
+      function currentHostname() {
+        // Dropdown wins whenever it has a value; the text box is only for creating
+        // a host that is not in the list yet.
+        const selected = $('host').value;
+        const typed = $('newHost').value.trim();
+        if (selected) return selected;
+        return typed;
+      }
+
+      function loadHostByName(hostname, options) {
+        options = options || {};
+        if (!hostname) {
+          setStatus('Choose a host from the dropdown, or type a new hostname.', 'error');
+          return;
+        }
+        if (!options.skipDirtyCheck && formDirty) {
+          if (hostname !== loadedHostname) {
+            if (!confirmDiscardIfDirty(hostname)) {
+              suppressHostChange = true;
+              $('host').value = loadedHostname || '';
+              suppressHostChange = false;
+              setStatus('Kept unsaved edits for ' + (loadedHostname || 'current host') + '.', 'ok');
+              return;
+            }
+          } else if (!confirm('Reload "' + hostname + '" from Drive and discard unsaved changes?')) {
+            return;
+          }
+        }
+
+        setStatus('Loading ' + hostname + '…');
+        google.script.run
+          .withSuccessHandler((payload) => {
+            suppressHostChange = true;
+            fillForm(payload);
+            suppressHostChange = false;
+            loadedHostname = payload.hostname;
+            clearDirty();
+            setStatus('Loaded ' + payload.hostname + '.json', 'ok');
+          })
+          .withFailureHandler(withFailure)
+          .loadHost(hostname);
+      }
+
+      function collectHostConfig() {
+        const host = {};
+        const aspect = $('aspect').value.trim();
+        const date = $('date').value;
+        const rotation = $('rotation').value;
+        const maxBytes = $('maxBytes').value.trim();
+        const maxFiles = $('maxFiles').value.trim();
+        const preserve = $('preserve').value;
+
+        if (aspect) host.aspect_ratio = aspect;
+        if (date) host.date = date;
+        if (rotation) host.rotation = rotation;
+        if (maxBytes) host.max_bytes = maxBytes;
+        if (maxFiles) host.max_files = Number(maxFiles);
+        if (preserve) host.preserve_unmanaged = preserve === 'true';
+
+        host.visibility_rules = Array.from($('rulesBody').querySelectorAll('tr')).map((tr) => ({
+          filter: tr.querySelector('.filter').value.trim(),
+          schedule: tr.querySelector('.schedule').value.trim() || '* * * * *',
+        })).filter((rule) => rule.filter);
+
+        host.crop_rules = Array.from($('cropRulesBody').querySelectorAll('tr')).map((tr) => ({
+          filter: tr.querySelector('.filter').value.trim(),
+          crop: tr.querySelector('.crop').value,
+        })).filter((rule) => rule.filter);
+
+        return host;
+      }
+
+      function fillForm(payload) {
+        const host = payload.host || {};
+        const defaults = payload.defaults || {};
+        // Keep "new hostname" empty after load/save so the dropdown is the active host.
+        $('newHost').value = '';
+        if (payload.hostname) {
+          $('host').value = payload.hostname;
+        }
+        $('aspect').value = host.aspect_ratio || '';
+        $('date').value = host.date || '';
+        $('rotation').value = host.rotation || '';
+        $('maxBytes').value = host.max_bytes != null ? String(host.max_bytes) : '';
+        $('maxFiles').value = host.max_files != null ? String(host.max_files) : '';
+        if (host.preserve_unmanaged === true) $('preserve').value = 'true';
+        else if (host.preserve_unmanaged === false) $('preserve').value = 'false';
+        else $('preserve').value = '';
+
+        $('defaultsHint').textContent =
+          'Defaults: ' + JSON.stringify(defaults) +
+          ' — host file stores overrides + visibility/crop rules only.';
+
+        const body = $('rulesBody');
+        body.innerHTML = '';
+        (host.visibility_rules || []).forEach((rule) => body.appendChild(ruleRow(rule)));
+        if (!body.children.length) body.appendChild(ruleRow());
+
+        const cropBody = $('cropRulesBody');
+        cropBody.innerHTML = '';
+        (host.crop_rules || []).forEach((rule) => cropBody.appendChild(cropRuleRow(rule)));
+        clearDirty();
+      }
+
+      function withFailure(err) {
+        setStatus(err && err.message ? err.message : String(err), 'error');
+      }
+
+      function refreshHosts(selected, autoLoad) {
+        google.script.run
+          .withSuccessHandler((data) => {
+            const select = $('host');
+            suppressHostChange = true;
+            select.innerHTML = '';
+            (data.hosts || []).forEach((name) => {
+              const opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name;
+              select.appendChild(opt);
+            });
+            if (selected) select.value = selected;
+            suppressHostChange = false;
+            $('defaultsHint').textContent = data.hosts.length
+              ? 'Selecting a host loads it automatically. Save before switching if you edit.'
+              : 'No host files yet — type a new hostname and Save to create one.';
+            if (autoLoad && select.value) {
+              loadHostByName(select.value, { skipDirtyCheck: true });
+            }
+          })
+          .withFailureHandler(withFailure)
+          .listHosts();
+      }
+
+      function hostnameForSave() {
+        // Saving a brand-new host: prefer the text box when the name is not in the list.
+        const typed = $('newHost').value.trim();
+        const selected = $('host').value;
+        if (typed && (!selected || typed !== selected)) return typed;
+        return selected || typed;
+      }
+
+      $('host').onchange = () => {
+        if (suppressHostChange) return;
+        $('newHost').value = '';
+        const hostname = $('host').value;
+        if (!hostname) return;
+        loadHostByName(hostname);
+      };
+
+      $('reloadBtn').onclick = () => {
+        loadHostByName(currentHostname());
+      };
+
+      $('saveBtn').onclick = () => {
+        const hostname = hostnameForSave();
+        if (!hostname) return setStatus('Choose a host from the dropdown, or type a new hostname.', 'error');
+        setStatus('Saving…');
+        google.script.run
+          .withSuccessHandler((payload) => {
+            suppressHostChange = true;
+            fillForm(payload);
+            suppressHostChange = false;
+            loadedHostname = payload.hostname;
+            clearDirty();
+            refreshHosts(payload.hostname, false);
+            setStatus('Saved config/' + payload.hostname + '.json', 'ok');
+          })
+          .withFailureHandler(withFailure)
+          .saveHost(hostname, collectHostConfig());
+      };
+
+      ['aspect', 'date', 'rotation', 'maxBytes', 'maxFiles', 'preserve', 'newHost'].forEach((id) => {
+        const el = $(id);
+        el.addEventListener('input', markDirty);
+        el.addEventListener('change', markDirty);
+      });
+      $('rulesBody').addEventListener('input', markDirty);
+      $('rulesBody').addEventListener('change', markDirty);
+      $('cropRulesBody').addEventListener('input', markDirty);
+      $('cropRulesBody').addEventListener('change', markDirty);
+
+      $('addRuleBtn').onclick = () => {
+        $('rulesBody').appendChild(ruleRow());
+        markDirty();
+      };
+      $('addCropRuleBtn').onclick = () => {
+        $('cropRulesBody').appendChild(cropRuleRow());
+        markDirty();
+      };
+      $('addPathBtn').onclick = () => addRuleForItem(selectedBrowseItem());
+      $('addCropPathBtn').onclick = () => addCropRuleForItem(selectedBrowseItem());
+      $('addCurrentFolderBtn').onclick = () => {
+        if (!browseState.albumsConfigured) {
+          return setStatus('Set ALBUMS_FOLDER_ID first.', 'error');
+        }
+        addRuleForItem({
+          path: browseState.currentPath,
+          type: 'folder',
+          filter: browseState.currentFilter,
+        });
+      };
+      $('addCropCurrentFolderBtn').onclick = () => {
+        if (!browseState.albumsConfigured) {
+          return setStatus('Set ALBUMS_FOLDER_ID first.', 'error');
+        }
+        addCropRuleForItem({
+          path: browseState.currentPath,
+          type: 'folder',
+          filter: browseState.currentFilter,
+        });
+      };
+      $('pathUpBtn').onclick = () => {
+        const crumbs = browseState.breadcrumbs || [];
+        if (crumbs.length < 2) return;
+        loadFolder(crumbs[crumbs.length - 2].path);
+      };
+
+      $('pathResults').onkeydown = (event) => {
+        if (!browseState.items.length) return;
+        const current = selectedItemIndex == null ? -1 : selectedItemIndex;
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          selectItemIndex(Math.min(current + 1, browseState.items.length - 1));
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          selectItemIndex(Math.max(current < 0 ? 0 : current - 1, 0));
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          const item = selectedBrowseItem();
+          if (!item) return;
+          if (item.type === 'folder') loadFolder(item.relativePath);
+          else addRuleForItem(item);
+        } else if (event.key === 'Backspace' && !$('pathResults').closest('input')) {
+          event.preventDefault();
+          $('pathUpBtn').click();
+        }
+      };
+
+      refreshHosts(null, true);
+      loadFolder('');
+    </script>
+  </body>
+</html>

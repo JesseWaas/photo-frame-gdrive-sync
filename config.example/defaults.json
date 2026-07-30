@@ -1,0 +1,7 @@
+{
+  "aspect_ratio": "3:4",
+  "date": "upload",
+  "max_bytes": "20GB",
+  "rotation": "hourly",
+  "preserve_unmanaged": true
+}

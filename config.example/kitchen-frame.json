@@ -1,0 +1,22 @@
+{
+  "visibility_rules": [
+    {
+      "filter": "^albums/family/.*",
+      "schedule": "* * * * *"
+    },
+    {
+      "filter": "^albums/holidays/.*",
+      "schedule": "* * * 12 *"
+    }
+  ],
+  "crop_rules": [
+    {
+      "filter": "^albums/family/.*",
+      "crop": "faces"
+    },
+    {
+      "filter": "^albums/holidays/.*",
+      "crop": "faces"
+    }
+  ]
+}

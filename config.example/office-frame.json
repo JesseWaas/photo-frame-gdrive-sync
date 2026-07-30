@@ -1,0 +1,18 @@
+{
+  "aspect_ratio": "9:16",
+  "date": "capture",
+  "max_files": 300,
+  "rotation": "daily",
+  "visibility_rules": [
+    {
+      "filter": "^albums/work/.*",
+      "schedule": "* 9-17 * * 1-5"
+    }
+  ],
+  "crop_rules": [
+    {
+      "filter": "^albums/work/.*",
+      "crop": "center"
+    }
+  ]
+}
