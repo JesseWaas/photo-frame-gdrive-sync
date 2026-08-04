@@ -206,6 +206,30 @@ class CropTests(unittest.TestCase):
         self.assertEqual((top, bottom), (0, 900))
         self.assertEqual(left, (1600 - 675) // 2)
 
+    def test_select_face_group_prefers_largest_and_ignores_distant_blob(self):
+        person = (200, 300, 120, 130)
+        tree_blob = (1100, 80, 90, 95)
+        group = crop._select_face_group([person, tree_blob], 1600, 900)
+        self.assertEqual(group, [person])
+
+    def test_select_face_group_keeps_nearby_faces(self):
+        left_face = (200, 300, 100, 110)
+        right_face = (340, 310, 95, 105)
+        group = crop._select_face_group([left_face, right_face], 1600, 900)
+        self.assertEqual(set(group), {left_face, right_face})
+
+    def test_select_face_group_rejects_non_square_blobs(self):
+        face = (200, 300, 100, 110)
+        wide_blob = (500, 100, 200, 60)
+        group = crop._select_face_group([face, wide_blob], 1600, 900)
+        self.assertEqual(group, [face])
+
+    def test_select_face_group_rejects_huge_foliage_blob(self):
+        person = (700, 350, 120, 130)
+        tree = (50, 40, 900, 820)  # most of the frame
+        group = crop._select_face_group([person, tree], 1600, 900)
+        self.assertEqual(group, [person])
+
     def test_render_crop_writes_jpeg(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             source = Path(temp_dir) / "source.jpg"

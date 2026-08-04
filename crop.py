@@ -142,6 +142,61 @@ def _haar_cascade_path(name: str = "haarcascade_frontalface_default.xml") -> Pat
     return None
 
 
+def _face_box_is_plausible(width: int, height: int, image_width: int, image_height: int) -> bool:
+    """Reject elongated / huge blobs that Haar often mistakes for faces (foliage, etc.)."""
+    if width <= 0 or height <= 0 or image_width <= 0 or image_height <= 0:
+        return False
+    aspect = width / height
+    if not (0.65 <= aspect <= 1.45):
+        return False
+    area_fraction = (width * height) / float(image_width * image_height)
+    # Real faces are rarely most of the frame; foliage false-positives often are large.
+    return 0.002 <= area_fraction <= 0.35
+
+
+def _face_score(box: tuple[int, int, int, int], image_width: int, image_height: int) -> float:
+    """Prefer larger faces that are still plausible and nearer the frame center."""
+    x, y, w, h = box
+    area = float(w * h)
+    cx = x + w / 2
+    cy = y + h / 2
+    dx = (cx - image_width / 2) / max(image_width / 2, 1)
+    dy = (cy - image_height / 2) / max(image_height / 2, 1)
+    center_penalty = 1.0 + (dx * dx + dy * dy)
+    return area / center_penalty
+
+
+def _select_face_group(
+    faces: list[tuple[int, int, int, int]],
+    image_width: int,
+    image_height: int,
+) -> list[tuple[int, int, int, int]]:
+    """Keep the best plausible face and nearby faces; drop distant false positives."""
+    plausible = [
+        (x, y, w, h)
+        for x, y, w, h in faces
+        if _face_box_is_plausible(w, h, image_width, image_height)
+    ]
+    if not plausible:
+        return []
+
+    anchor = max(plausible, key=lambda box: _face_score(box, image_width, image_height))
+    ax, ay, aw, ah = anchor
+    anchor_cx = ax + aw / 2
+    anchor_cy = ay + ah / 2
+    # Allow other faces in a group portrait around the main subject.
+    max_distance = 2.5 * max(aw, ah)
+
+    group = []
+    for x, y, w, h in plausible:
+        cx = x + w / 2
+        cy = y + h / 2
+        distance = ((cx - anchor_cx) ** 2 + (cy - anchor_cy) ** 2) ** 0.5
+        if distance <= max_distance:
+            group.append((x, y, w, h))
+    return group or [anchor]
+
+
 def _detect_face_center(image: Image.Image) -> tuple[float, float] | None:
     """Return the center of detected faces, or None if none found."""
     gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
@@ -158,20 +213,22 @@ def _detect_face_center(image: Image.Image) -> tuple[float, float] | None:
         logger.error("Failed to load OpenCV face cascade from %s", cascade_path)
         return None
 
-    faces = detector.detectMultiScale(
+    # Higher minNeighbors cuts foliage false positives; slightly coarser scale helps on Pi Zero.
+    raw_faces = detector.detectMultiScale(
         gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(48, 48),
+        scaleFactor=1.15,
+        minNeighbors=8,
+        minSize=(64, 64),
         flags=cv2.CASCADE_SCALE_IMAGE,
     )
-    if len(faces) == 0:
+    faces = [(int(x), int(y), int(w), int(h)) for x, y, w, h in raw_faces]
+    group = _select_face_group(faces, image.width, image.height)
+    if not group:
         return None
 
-    # Union box center keeps groups framed together.
     left = top = float("inf")
     right = bottom = float("-inf")
-    for x, y, w, h in faces:
+    for x, y, w, h in group:
         left = min(left, x)
         top = min(top, y)
         right = max(right, x + w)
