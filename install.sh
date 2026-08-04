@@ -179,7 +179,12 @@ install_deps() {
 
   echo "Installing system packages..."
   do_as_root "apt-get update"
-  do_as_root "DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-venv python3-pip rclone gphoto2 uhubctl git"
+  do_as_root "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    python3 python3-venv python3-pip rclone gphoto2 uhubctl git \
+    libopenblas0 libwebpmux3 libwebpdemux2 libwebp7 libtiff6 \
+    libopenjp2-7 libxcb1 libgomp1 libatomic1 libopenexr-3-1-30 \
+    libavcodec61 libavformat61 libavutil59 libswscale8 \
+    python3-numpy python3-opencv python3-pil opencv-data"
 }
 
 ensure_user() {
@@ -225,6 +230,11 @@ EOF
   do_as_root "udevadm trigger --subsystem-match=usb || true"
 }
 
+is_armv6() {
+  # Original Pi Zero / Pi 1 — pip NumPy/OpenCV wheels often SIGILL here.
+  [[ "$(uname -m)" == "armv6l" ]]
+}
+
 install_files() {
   echo "Creating deploy directory: ${DEPLOY_DIR}"
   do_as_root "mkdir -p '${DEPLOY_DIR}'"
@@ -239,6 +249,10 @@ install_files() {
     do_as_root "install -m 0644 '${SRC_DIR}/${file}' '${DEPLOY_DIR}/${file}'"
   done
 
+  if [[ -f "${SRC_DIR}/requirements-armv6.txt" ]]; then
+    do_as_root "install -m 0644 '${SRC_DIR}/requirements-armv6.txt' '${DEPLOY_DIR}/requirements-armv6.txt'"
+  fi
+
   # Example host config only; runtime config/ is expected from Drive sync.
   if [[ -d "${SRC_DIR}/config.example" ]]; then
     do_as_root "rm -rf '${DEPLOY_DIR}/config.example'"
@@ -248,10 +262,20 @@ install_files() {
   do_as_root "mkdir -p '${LOCAL_PATH}'"
   do_as_root "chown -R '${RUN_AS_USER}:${RUN_AS_USER}' '${DEPLOY_DIR}' '${LOCAL_PATH}'"
 
+  local venv_args=()
+  local req_file="${DEPLOY_DIR}/requirements.txt"
+  if is_armv6; then
+    echo "Detected armv6 (Pi Zero/1): using apt NumPy/OpenCV/Pillow via --system-site-packages"
+    venv_args+=(--system-site-packages)
+    if [[ -f "${DEPLOY_DIR}/requirements-armv6.txt" ]]; then
+      req_file="${DEPLOY_DIR}/requirements-armv6.txt"
+    fi
+  fi
+
   echo "Creating Python virtualenv in ${DEPLOY_DIR}/venv"
-  do_as_root "sudo -H -u '${RUN_AS_USER}' python3 -m venv '${DEPLOY_DIR}/venv'"
+  do_as_root "sudo -H -u '${RUN_AS_USER}' python3 -m venv ${venv_args[*]} '${DEPLOY_DIR}/venv'"
   do_as_root "sudo -H -u '${RUN_AS_USER}' '${DEPLOY_DIR}/venv/bin/pip' install --upgrade pip"
-  do_as_root "sudo -H -u '${RUN_AS_USER}' '${DEPLOY_DIR}/venv/bin/pip' install -r '${DEPLOY_DIR}/requirements.txt'"
+  do_as_root "sudo -H -u '${RUN_AS_USER}' '${DEPLOY_DIR}/venv/bin/pip' install -r '${req_file}'"
 
   if [[ -n "${SERVICE_ACCOUNT_FILE_SRC}" ]]; then
     install_service_account

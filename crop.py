@@ -122,10 +122,37 @@ def _load_image(path: Path) -> Image.Image:
         return ImageOps.exif_transpose(image).convert("RGB")
 
 
+def _haar_cascade_path(name: str = "haarcascade_frontalface_default.xml") -> Path | None:
+    """Locate an OpenCV Haar cascade XML (pip wheels and Debian packages differ)."""
+    candidates: list[Path] = []
+    data = getattr(cv2, "data", None)
+    haarcascades = getattr(data, "haarcascades", None) if data is not None else None
+    if haarcascades:
+        candidates.append(Path(haarcascades) / name)
+    candidates.extend(
+        [
+            Path("/usr/share/opencv4/haarcascades") / name,
+            Path("/usr/share/opencv/haarcascades") / name,
+            Path("/usr/local/share/opencv4/haarcascades") / name,
+        ]
+    )
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
 def _detect_face_center(image: Image.Image) -> tuple[float, float] | None:
     """Return the center of detected faces, or None if none found."""
     gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
-    cascade_path = Path(cv2.data.haarcascades) / "haarcascade_frontalface_default.xml"
+    cascade_path = _haar_cascade_path()
+    if cascade_path is None:
+        logger.error(
+            "OpenCV face cascade not found (tried cv2.data and /usr/share/opencv*/haarcascades). "
+            "Install opencv-data or use crop strategy center/none."
+        )
+        return None
+
     detector = cv2.CascadeClassifier(str(cascade_path))
     if detector.empty():
         logger.error("Failed to load OpenCV face cascade from %s", cascade_path)

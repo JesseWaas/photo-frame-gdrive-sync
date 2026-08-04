@@ -201,13 +201,15 @@ curl -sL https://raw.githubusercontent.com/OWNER/REPO/main/install.sh \
 
 Useful options:
 
-- `--install-deps` — apt-install `python3`, `rclone`, `gphoto2`, `uhubctl` (Debian/Ubuntu)
+- `--install-deps` — apt-install runtime tools plus libs needed by NumPy/OpenCV wheels (`libopenblas0`, `libwebpmux3`, …) on Debian/Ubuntu
 - `--local-path` — persistent photo cache (default `/home/photoframe/google_photo_sync`)
 - `--service-account-file` — install a Drive service-account JSON and configure rclone
 - `--no-shared-with-me` — disable rclone shared-folder mode
 - `--user` / `--no-create-user` — control the service account user
 
 The installer deploys the Python modules to `/opt/photoframe`, creates a venv, installs `requirements.txt`, writes `/usr/local/bin/photoframe-sync`, and enables a systemd timer.
+
+On original Pi Zero / Pi 1 (`armv6l`), pip NumPy/OpenCV wheels often crash with `SIGILL`. The installer detects that and uses Debian `python3-numpy` / `python3-opencv` / `python3-pil` via a `--system-site-packages` venv instead.
 
 ## Tests
 
