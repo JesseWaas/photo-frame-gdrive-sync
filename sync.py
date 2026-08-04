@@ -11,6 +11,7 @@ from crop import (
     FRAME_NAME_HASH_LEN,
     UPLOAD_STAGING_DIRNAME,
     AspectRatio,
+    FaceCropAborted,
     PreparedUpload,
     frame_name_for,
     normalize_crop_strategy,
@@ -249,10 +250,18 @@ def update_frame(
 
         for alt_name, _ in new_files:
             staged = staging_dir / alt_name
+            prepared = prepared_by_name[alt_name]
             try:
-                stage_upload_file(prepared_by_name[alt_name], aspect=aspect, staging_path=staged)
+                stage_upload_file(prepared, aspect=aspect, staging_path=staged)
                 logger.info("Uploading to frame: %s as %s", staged, alt_name)
                 photoframe.upload(staged, alt_name)
+            except FaceCropAborted as exc:
+                logger.warning(
+                    "Skipping upload of %s (%s): %s",
+                    prepared.source_path,
+                    alt_name,
+                    exc,
+                )
             finally:
                 try:
                     staged.unlink(missing_ok=True)

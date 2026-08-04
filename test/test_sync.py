@@ -197,14 +197,11 @@ class CropTests(unittest.TestCase):
         self.assertEqual(right - left, 675)
         self.assertEqual(left, 0)  # clamped to left edge around face at x=300
 
-    def test_faces_falls_back_to_center_when_no_faces(self):
+    def test_faces_aborts_when_no_faces(self):
         image = Image.new("RGB", (1600, 900), (30, 30, 30))
         with patch("crop._detect_face_center", return_value=None):
-            box = crop.compute_crop_box(image, "faces", crop.parse_aspect_ratio("3:4"))
-
-        left, top, right, bottom = box
-        self.assertEqual((top, bottom), (0, 900))
-        self.assertEqual(left, (1600 - 675) // 2)
+            with self.assertRaises(crop.FaceCropAborted):
+                crop.compute_crop_box(image, "faces", crop.parse_aspect_ratio("3:4"))
 
     def test_select_face_group_prefers_largest_and_ignores_distant_blob(self):
         person = (200, 300, 120, 130)

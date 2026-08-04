@@ -28,6 +28,10 @@ SUPPORTED_STRATEGIES = {"none", "center", "faces"}
 FRAME_NAME_HASH_LEN = 16
 
 
+class FaceCropAborted(RuntimeError):
+    """Raised when faces crop is requested but no faces are detected."""
+
+
 @dataclass(frozen=True)
 class AspectRatio:
     width: float
@@ -237,7 +241,10 @@ def _detect_face_center(image: Image.Image) -> tuple[float, float] | None:
 
 
 def compute_crop_box(image: Image.Image, strategy: str, aspect: AspectRatio) -> tuple[int, int, int, int]:
-    """Choose a crop box for the given strategy."""
+    """Choose a crop box for the given strategy.
+
+    Raises FaceCropAborted if strategy is faces and no faces are detected.
+    """
     width, height = image.size
     strategy = normalize_crop_strategy(strategy)
 
@@ -249,11 +256,10 @@ def compute_crop_box(image: Image.Image, strategy: str, aspect: AspectRatio) -> 
 
     if strategy == "faces":
         detected = _detect_face_center(image)
-        if detected is not None:
-            center_x, center_y = detected
-            logger.debug("Face-centered crop at (%.1f, %.1f)", center_x, center_y)
-        else:
-            logger.debug("No faces detected; falling back to center crop")
+        if detected is None:
+            raise FaceCropAborted("No faces detected; aborting faces crop")
+        center_x, center_y = detected
+        logger.debug("Face-centered crop at (%.1f, %.1f)", center_x, center_y)
 
     return crop_window(width, height, aspect, center_x=center_x, center_y=center_y)
 
